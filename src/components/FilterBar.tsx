@@ -153,7 +153,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 className="bg-transparent border-none text-xs font-medium text-slate-800 focus:outline-hidden cursor-pointer truncate w-full"
               >
                 <option value="">Semua AM (Nasional)</option>
-                {meta?.ams.map((am) => (
+                {meta?.ams?.map((am) => (
                   <option key={am.code} value={am.code}>
                     {am.code} - {am.name}
                   </option>
@@ -196,7 +196,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               className="bg-transparent border-none text-xs font-medium text-slate-800 focus:outline-hidden cursor-pointer"
             >
               <option value="">Semua Principal</option>
-              {meta?.principals.map((pr) => (
+              {meta?.principals?.map((pr) => (
                 <option key={pr} value={pr}>
                   {pr}
                 </option>

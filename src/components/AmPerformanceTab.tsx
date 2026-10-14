@@ -39,7 +39,7 @@ export const AmPerformanceTab: React.FC<AmPerformanceTabProps> = ({
   // Count unique BOs per AM from meta
   const boCountMap = useMemo(() => {
     const map = new Map<string, number>();
-    meta?.bos.forEach((b) => {
+    meta?.bos?.forEach((b) => {
       map.set(b.am_code, (map.get(b.am_code) || 0) + 1);
     });
     return map;

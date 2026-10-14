@@ -108,20 +108,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       headers,
     });
 
-    if (res.status === 401) {
-      clearAuthSession();
-      window.dispatchEvent(new CustomEvent('q4:auth_unauthorized'));
-      throw new ApiError('Sesi autentikasi telah berakhir atau token tidak valid (401).', 401);
-    }
-
-    if (res.status === 403) {
-      window.dispatchEvent(new CustomEvent('q4:auth_forbidden'));
-      throw new ApiError('Akses ditolak: Anda tidak memiliki wewenang untuk data ini (403).', 403);
-    }
-
     if (!res.ok) {
       const errorText = await res.text();
-      let parsedMessage = `Permintaan ke ${endpoint} gagal (HTTP ${res.status})`;
+      let parsedMessage = `Permintaan gagal (HTTP ${res.status})`;
       let parsedJson: unknown;
       try {
         parsedJson = JSON.parse(errorText);
@@ -130,6 +119,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       } catch {
         if (errorText.length > 0 && errorText.length < 150) parsedMessage = errorText;
       }
+
+      if (res.status === 401) {
+        if (!endpoint.includes('/auth/login')) {
+          clearAuthSession();
+          window.dispatchEvent(new CustomEvent('q4:auth_unauthorized'));
+        }
+        throw new ApiError(parsedMessage || 'Sesi autentikasi telah berakhir atau token tidak valid.', 401, parsedJson);
+      }
+
+      if (res.status === 403) {
+        window.dispatchEvent(new CustomEvent('q4:auth_forbidden'));
+        throw new ApiError(parsedMessage || 'Akses ditolak: Anda tidak memiliki wewenang untuk data ini.', 403, parsedJson);
+      }
+
       throw new ApiError(parsedMessage, res.status, parsedJson);
     }
 

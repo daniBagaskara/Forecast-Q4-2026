@@ -8,8 +8,6 @@ import {
   api,
   getStoredToken,
   getStoredUser,
-  isMockModeActive,
-  setMockModePreference,
 } from './services/api';
 import {
   User,
@@ -64,7 +62,6 @@ export default function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [rawFacts, setRawFacts] = useState<FactRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMockActive, setIsMockActive] = useState(() => isMockModeActive());
 
   // Toast notifications (e.g. for 403 Forbidden or network info)
   const [toastMessage, setToastMessage] = useState<{
@@ -120,7 +117,6 @@ export default function App() {
       ]);
       setMeta(metaRes);
       setRawFacts(factsRes.data || []);
-      setIsMockActive(isMockModeActive());
     } catch (err: unknown) {
       const errObj = err as Error;
       setToastMessage({
@@ -146,20 +142,6 @@ export default function App() {
     setRawFacts([]);
     setMeta(null);
     setSelectedBoDrawer(null);
-  };
-
-  // Toggle Mock Mode preference
-  const handleToggleMockMode = () => {
-    const nextMode = !isMockActive;
-    setMockModePreference(nextMode);
-    setIsMockActive(nextMode);
-    setToastMessage({
-      type: 'info',
-      text: nextMode
-        ? 'Beralih ke Mock Data Mode (Pratinjau lokal offline).'
-        : 'Beralih ke Live API Mode.',
-    });
-    loadInitialData();
   };
 
   // Filter facts based on User Role (AM restriction) and Global Filters
@@ -277,8 +259,6 @@ export default function App() {
         onLogout={handleLogout}
         onOpenSkuModal={() => setIsSkuModalOpen(true)}
         isLoading={isLoading}
-        isMockActive={isMockActive}
-        onToggleMockMode={handleToggleMockMode}
       />
 
       {/* Sticky Global Filter Bar */}
