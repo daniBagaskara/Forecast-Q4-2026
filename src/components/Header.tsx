@@ -84,15 +84,15 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onToggleMockMode}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer shadow-2xs ${
               isMockActive
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-600/40 hover:bg-amber-500/30'
-                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-600/40 hover:bg-emerald-500/30'
+                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 hover:bg-amber-500/40'
+                : 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-500/40'
             }`}
-            title="Klik untuk beralih mode sumber data (API Live / Mock Data)"
+            title="Klik untuk beralih mode sumber data (API Live Server Asli / Mock Data)"
           >
-            <Database className="w-2.5 h-2.5" />
-            <span>{isMockActive ? 'Mode: Mock' : 'Mode: Live API'}</span>
+            <Database className="w-3 h-3" />
+            <span>{isMockActive ? 'Mode: Mock (Data Tiruan)' : 'Mode: Live API (Server Asli)'}</span>
           </button>
         </div>
       </div>

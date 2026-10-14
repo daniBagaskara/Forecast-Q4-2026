@@ -20,7 +20,7 @@ import {
   MetricType,
   TabKey,
 } from './types';
-import { calculateMockSummary } from './services/mockData';
+import { calculateAggregatedSummary } from './utils/aggregation';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { TabsNavigation } from './components/TabsNavigation';
@@ -191,7 +191,7 @@ export default function App() {
 
   // Calculate live summary on client from filtered facts for instant performance
   const calculatedSummary: SummaryResponse = useMemo(() => {
-    return calculateMockSummary(
+    return calculateAggregatedSummary(
       filteredFacts,
       filter.bulan_no,
       filter.am_code,
