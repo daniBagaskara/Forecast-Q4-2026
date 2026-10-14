@@ -1,0 +1,6 @@
+{
+  "name": "Monitoring Pesanan & Forecast Q4 2026",
+  "description": "Dashboard Eksekutif & Operasional Monitoring Realisasi Pesanan terhadap Target Forecast Q4 2026 PT Intan Pariwara",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
