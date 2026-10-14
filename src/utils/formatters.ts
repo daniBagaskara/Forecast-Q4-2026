@@ -164,3 +164,24 @@ export function calculateRunRate(
     requiredPerDay,
   };
 }
+
+export function formatSyncDate(dateStr?: string | null): string {
+  if (!dateStr) return '-';
+  try {
+    const cleanStr = dateStr.replace(' ', 'T');
+    const d = new Date(cleanStr);
+    if (!isNaN(d.getTime())) {
+      const day = d.getDate();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const month = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      return `${day} ${month} ${year}, ${hours}:${mins}`;
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr;
+}
+

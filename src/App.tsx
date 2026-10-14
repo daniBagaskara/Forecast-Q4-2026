@@ -301,6 +301,7 @@ export default function App() {
                 summary={calculatedSummary}
                 facts={filteredFacts}
                 metric={metric}
+                skuCount={meta?.excluded_skus?.length || 0}
                 onOpenSkuModal={() => setIsSkuModalOpen(true)}
                 onSelectPrincipalFilter={(pr) =>
                   setFilter((prev) => ({ ...prev, principal: pr }))

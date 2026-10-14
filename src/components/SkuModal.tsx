@@ -39,7 +39,7 @@ export const SkuModal: React.FC<SkuModalProps> = ({
                 Transparansi SKU Dikecualikan
               </h3>
               <p className="text-xs text-slate-500">
-                Dasar Kebijakan &amp; Daftar 4 SKU Sarana Keterampilan Menulis
+                Rincian {skus.length} SKU Dikecualikan dari Target Komersial
               </p>
             </div>
           </div>
@@ -61,9 +61,7 @@ export const SkuModal: React.FC<SkuModalProps> = ({
                 Dasar Penyesuaian KPI Q4 2026
               </p>
               <p className="text-xs text-sky-800 mt-1 leading-relaxed">
-                Sesuai Surat Edaran Direksi PT Intan Pariwara No. 042/DIR/IX/2026, 4 SKU Paket Sarana Keterampilan Menulis
-                dikelompokkan sebagai proyek afirmasi khusus dan <strong>dikecualikan dari perhitungan realisasi target komersial reguler</strong> agar
-                evaluasi pencapaian tim penjualan murni mencerminkan serapan pasar bebas.
+                Sesuai kebijakan direksi, {skus.length} SKU proyek khusus ini <strong>dikecualikan dari perhitungan realisasi target komersial reguler</strong> agar evaluasi pencapaian tim penjualan murni mencerminkan serapan pasar bebas.
               </p>
             </div>
           </div>
@@ -90,10 +88,10 @@ export const SkuModal: React.FC<SkuModalProps> = ({
             </div>
           </div>
 
-          {/* List of 4 SKUs */}
+          {/* List of SKUs */}
           <div>
             <h4 className="text-xs font-semibold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-slate-500" /> Daftar 4 SKU Terkait:
+              <FileText className="w-3.5 h-3.5 text-slate-500" /> Daftar SKU Dikecualikan ({skus.length} Item):
             </h4>
             <div className="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100">
               {skus.map((sku) => (
