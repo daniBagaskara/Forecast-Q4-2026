@@ -15,7 +15,6 @@ import {
   FactRecord,
   SummaryResponse,
   FilterState,
-  MetricType,
   TabKey,
 } from './types';
 import { calculateAggregatedSummary } from './utils/aggregation';
@@ -37,9 +36,6 @@ export default function App() {
   const [user, setUser] = useState<User | null>(() => getStoredUser());
   const [token, setToken] = useState<string | null>(() => getStoredToken());
 
-  // Global metric toggle (Netto | Bruto, default: Netto)
-  const [metric, setMetric] = useState<MetricType>('netto');
-
   // Active tab state
   const [activeTab, setActiveTab] = useState<TabKey>('executive');
 
@@ -49,7 +45,6 @@ export default function App() {
     am_code: null,
     bo_code: null,
     principal: null,
-    metric: 'netto',
   });
 
   // Selected BO for Drawer
@@ -199,7 +194,6 @@ export default function App() {
       am_code: user?.role === 'am' ? user.am_code || null : null,
       bo_code: null,
       principal: null,
-      metric,
     });
   };
 
@@ -219,7 +213,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans">
       {/* Toast Notification Alert Banner */}
       {toastMessage && (
         <div
@@ -250,11 +244,6 @@ export default function App() {
       <Header
         user={user}
         meta={meta}
-        metric={metric}
-        onMetricChange={(m) => {
-          setMetric(m);
-          setFilter((prev) => ({ ...prev, metric: m }));
-        }}
         onRefresh={loadInitialData}
         onLogout={handleLogout}
         onOpenSkuModal={() => setIsSkuModalOpen(true)}
@@ -300,7 +289,6 @@ export default function App() {
               <ExecutiveSummaryTab
                 summary={calculatedSummary}
                 facts={filteredFacts}
-                metric={metric}
                 skuCount={meta?.excluded_skus?.length || 0}
                 onOpenSkuModal={() => setIsSkuModalOpen(true)}
                 onSelectPrincipalFilter={(pr) =>
@@ -314,7 +302,6 @@ export default function App() {
               <AmPerformanceTab
                 facts={filteredFacts}
                 meta={meta}
-                metric={metric}
                 onSelectAm={handleSelectAm}
               />
             )}
@@ -323,7 +310,6 @@ export default function App() {
             {activeTab === 'bo' && (
               <BoPerformanceTab
                 facts={filteredFacts}
-                metric={metric}
                 onOpenBoDrawer={(boCode) => setSelectedBoDrawer(boCode)}
               />
             )}
@@ -332,7 +318,6 @@ export default function App() {
             {activeTab === 'principal' && (
               <PrincipalPerformanceTab
                 facts={filteredFacts}
-                metric={metric}
               />
             )}
 
@@ -340,7 +325,6 @@ export default function App() {
             {activeTab === 'rankings' && user.role === 'direktur' && (
               <RankingsTab
                 facts={filteredFacts}
-                metric={metric}
                 onOpenBoDrawer={(boCode) => setSelectedBoDrawer(boCode)}
               />
             )}
@@ -353,7 +337,6 @@ export default function App() {
         boCode={selectedBoDrawer}
         onClose={() => setSelectedBoDrawer(null)}
         facts={rawFacts}
-        metric={metric}
       />
 
       {/* 4 SKU Excluded Transparency Modal */}

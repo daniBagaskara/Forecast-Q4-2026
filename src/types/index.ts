@@ -81,7 +81,7 @@ export interface FilterState {
   am_code: string | null;
   bo_code: string | null;
   principal: string | null;
-  metric: MetricType;
+  metric?: MetricType;
 }
 
 export type TabKey = 'executive' | 'am' | 'bo' | 'principal' | 'rankings';

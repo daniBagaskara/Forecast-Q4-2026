@@ -8,9 +8,8 @@ import {
   Store,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
 } from 'lucide-react';
-import { FactRecord, MetricType } from '../types';
+import { FactRecord } from '../types';
 import {
   formatThousand,
   formatPercentValue,
@@ -20,25 +19,22 @@ import { exportToExcel } from '../services/export';
 
 interface BoPerformanceTabProps {
   facts: FactRecord[];
-  metric: MetricType;
   onOpenBoDrawer: (boCode: string) => void;
 }
 
-type SortField = 'bo_code' | 'bo_name' | 'am_code' | 'forecast' | 'pesanan' | 'pct' | 'gap';
+type SortField = 'bo_code' | 'bo_name' | 'am_code' | 'forecast' | 'pesanan_bruto' | 'pct_bruto' | 'gap_bruto';
 
 export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
   facts,
-  metric,
   onOpenBoDrawer,
 }) => {
-  const isNetto = metric === 'netto';
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState<SortField>('pct');
+  const [sortField, setSortField] = useState<SortField>('pct_bruto');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
-  // Aggregate facts by BO
+  // Aggregate facts by BO with unified Bruto and Netto
   const boData = useMemo(() => {
     const map = new Map<
       string,
@@ -48,7 +44,8 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
         am_code: string;
         am_name: string;
         forecast: number;
-        pesanan: number;
+        pesanan_bruto: number;
+        pesanan_netto: number;
       }
     >();
 
@@ -59,29 +56,41 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
         am_code: f.am_code,
         am_name: f.am_name,
         forecast: 0,
-        pesanan: 0,
+        pesanan_bruto: 0,
+        pesanan_netto: 0,
       };
-      const val = isNetto ? f.pesanan_netto : f.pesanan_bruto;
       map.set(f.bo_code, {
         ...current,
-        forecast: current.forecast + f.forecast,
-        pesanan: current.pesanan + val,
+        forecast: current.forecast + (f.forecast || 0),
+        pesanan_bruto: current.pesanan_bruto + (f.pesanan_bruto || 0),
+        pesanan_netto: current.pesanan_netto + (f.pesanan_netto || 0),
       });
     });
 
     return Array.from(map.values()).map((item) => {
-      const { pct, label, isWithoutForecast } = formatPercentValue(item.pesanan, item.forecast);
-      const gap = item.forecast - item.pesanan;
+      const { pct: pctBruto, label: pctBrutoLabel, isWithoutForecast } = formatPercentValue(
+        item.pesanan_bruto,
+        item.forecast
+      );
+      const { pct: pctNetto, label: pctNettoLabel } = formatPercentValue(
+        item.pesanan_netto,
+        item.forecast
+      );
+      const gapBruto = item.forecast - item.pesanan_bruto;
+      const gapNetto = item.forecast - item.pesanan_netto;
 
       return {
         ...item,
-        pct: pct ?? -1,
-        pct_label: label,
+        pct_bruto: pctBruto ?? -1,
+        pct_bruto_label: pctBrutoLabel,
+        pct_netto: pctNetto ?? -1,
+        pct_netto_label: pctNettoLabel,
         isWithoutForecast,
-        gap,
+        gap_bruto: gapBruto,
+        gap_netto: gapNetto,
       };
     });
-  }, [facts, isNetto]);
+  }, [facts]);
 
   // Filter & Sort
   const filteredAndSorted = useMemo(() => {
@@ -102,9 +111,9 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
         else if (sortField === 'bo_name') cmp = a.bo_name.localeCompare(b.bo_name);
         else if (sortField === 'am_code') cmp = a.am_code.localeCompare(b.am_code);
         else if (sortField === 'forecast') cmp = a.forecast - b.forecast;
-        else if (sortField === 'pesanan') cmp = a.pesanan - b.pesanan;
-        else if (sortField === 'pct') cmp = a.pct - b.pct;
-        else if (sortField === 'gap') cmp = a.gap - b.gap;
+        else if (sortField === 'pesanan_bruto') cmp = a.pesanan_bruto - b.pesanan_bruto;
+        else if (sortField === 'pct_bruto') cmp = a.pct_bruto - b.pct_bruto;
+        else if (sortField === 'gap_bruto') cmp = a.gap_bruto - b.gap_bruto;
 
         return sortDirection === 'asc' ? cmp : -cmp;
       });
@@ -130,12 +139,12 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 inline ml-1" />;
+      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-300 inline ml-1" />;
     }
     return sortDirection === 'asc' ? (
-      <ArrowUp className="w-3.5 h-3.5 text-indigo-600 inline ml-1" />
+      <ArrowUp className="w-3.5 h-3.5 text-slate-900 inline ml-1" />
     ) : (
-      <ArrowDown className="w-3.5 h-3.5 text-indigo-600 inline ml-1" />
+      <ArrowDown className="w-3.5 h-3.5 text-slate-900 inline ml-1" />
     );
   };
 
@@ -149,25 +158,23 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
         { header: 'Kode AM', key: 'am_code' },
         { header: 'Wilayah AM', key: 'am_name' },
         { header: 'Target Forecast PO (Rp)', key: 'forecast', format: (r) => r.forecast },
-        {
-          header: `Realisasi Pesanan ${isNetto ? 'Netto' : 'Bruto'} (Rp)`,
-          key: 'pesanan',
-          format: (r) => r.pesanan,
-        },
-        { header: '% Capaian', key: 'pct', format: (r) => r.pct_label },
-        { header: 'Gap / Selisih (Rp)', key: 'gap', format: (r) => r.gap },
+        { header: 'Pesanan Bruto (Rp)', key: 'pesanan_bruto', format: (r) => r.pesanan_bruto },
+        { header: 'Pesanan Netto (Rp)', key: 'pesanan_netto', format: (r) => r.pesanan_netto },
+        { header: '% Capai Bruto', key: 'pct_bruto', format: (r) => r.pct_bruto_label },
+        { header: '% Capai Netto', key: 'pct_netto', format: (r) => r.pct_netto_label },
+        { header: 'Gap Bruto (Rp)', key: 'gap_bruto', format: (r) => r.gap_bruto },
       ],
-      `Kinerja_Cabang_BO_Q4_2026_${metric}`,
+      `Kinerja_Cabang_BO_Q4_2026`,
       'Kinerja BO'
     );
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Search and Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Cari kode BO, nama cabang, atau AM..."
@@ -176,7 +183,7 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-slate-900 text-slate-800"
           />
         </div>
 
@@ -189,7 +196,7 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
                 setPageSize(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-700"
+              className="bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1 text-xs text-slate-700"
             >
               <option value="10">10</option>
               <option value="15">15</option>
@@ -198,112 +205,122 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
             </select>
           </div>
 
-          <span className="text-xs text-slate-500">
-            Total: <strong className="text-slate-800">{filteredAndSorted.length}</strong> Cabang
+          <span className="text-xs text-slate-500 font-medium">
+            Total: <strong className="text-slate-900">{filteredAndSorted.length}</strong> Cabang
           </span>
 
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl transition-colors shadow-2xs cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Export XLSX</span>
           </button>
         </div>
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-700 uppercase tracking-wider font-semibold">
+            <thead className="bg-slate-50/70 border-b border-slate-100 text-slate-600 uppercase tracking-wider font-semibold text-[11px]">
               <tr>
                 <th
                   onClick={() => handleSort('bo_code')}
-                  className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors w-24"
+                  className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/70 transition-colors w-24"
                 >
                   Kode BO {renderSortIcon('bo_code')}
                 </th>
                 <th
                   onClick={() => handleSort('bo_name')}
-                  className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                  className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/70 transition-colors"
                 >
                   Nama Cabang (BO) {renderSortIcon('bo_name')}
                 </th>
                 <th
                   onClick={() => handleSort('am_code')}
-                  className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors w-28"
+                  className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/70 transition-colors w-28"
                 >
                   Area (AM) {renderSortIcon('am_code')}
                 </th>
                 <th
                   onClick={() => handleSort('forecast')}
-                  className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                  className="py-3.5 px-5 text-right cursor-pointer hover:bg-slate-100/70 transition-colors"
                 >
-                  Target Forecast PO {renderSortIcon('forecast')}
+                  Target Forecast {renderSortIcon('forecast')}
                 </th>
                 <th
-                  onClick={() => handleSort('pesanan')}
-                  className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => handleSort('pesanan_bruto')}
+                  className="py-3.5 px-5 text-right cursor-pointer hover:bg-slate-100/70 transition-colors"
                 >
-                  Pesanan ({isNetto ? 'Netto' : 'Bruto'}) {renderSortIcon('pesanan')}
+                  Pesanan (Bruto &amp; Netto) {renderSortIcon('pesanan_bruto')}
                 </th>
                 <th
-                  onClick={() => handleSort('pct')}
-                  className="py-3 px-4 cursor-pointer hover:bg-slate-100 transition-colors min-w-[170px]"
+                  onClick={() => handleSort('pct_bruto')}
+                  className="py-3.5 px-5 cursor-pointer hover:bg-slate-100/70 transition-colors min-w-[180px]"
                 >
-                  % Capaian {renderSortIcon('pct')}
+                  % Capaian {renderSortIcon('pct_bruto')}
                 </th>
                 <th
-                  onClick={() => handleSort('gap')}
-                  className="py-3 px-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => handleSort('gap_bruto')}
+                  className="py-3.5 px-5 text-right cursor-pointer hover:bg-slate-100/70 transition-colors"
                 >
-                  Gap / Selisih {renderSortIcon('gap')}
+                  Defisit / Gap {renderSortIcon('gap_bruto')}
                 </th>
-                <th className="py-3 px-4 text-center w-24">Aksi</th>
+                <th className="py-3.5 px-4 text-center w-24">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-50">
               {paginatedData.map((row) => {
-                const style = getAchievementStyle(row.pct >= 0 ? row.pct : null, row.isWithoutForecast);
-                const progressWidth = row.pct >= 0 ? Math.min(Math.max(row.pct, 0), 100) : 0;
+                const style = getAchievementStyle(row.pct_bruto >= 0 ? row.pct_bruto : null, row.isWithoutForecast);
+                const progressWidth = row.pct_bruto >= 0 ? Math.min(Math.max(row.pct_bruto, 0), 100) : 0;
 
                 return (
                   <tr
                     key={row.bo_code}
                     onClick={() => onOpenBoDrawer(row.bo_code)}
-                    className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                    className="hover:bg-slate-50/60 transition-colors cursor-pointer group"
                   >
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                      <span className="bg-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-700 px-2 py-0.5 rounded transition-colors">
+                    <td className="py-3.5 px-5 font-mono font-bold text-slate-900">
+                      <span className="bg-slate-100 group-hover:bg-indigo-50 group-hover:text-indigo-700 px-2.5 py-1 rounded-lg transition-colors">
                         {row.bo_code}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-medium text-slate-800">
+                    <td className="py-3.5 px-5 font-medium text-slate-800">
                       <div className="flex items-center gap-2">
-                        <Store className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                        <span>{row.bo_name}</span>
+                        <Store className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-900 transition-colors" />
+                        <span className="font-semibold">{row.bo_name}</span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-slate-600 font-medium">
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                    <td className="py-3.5 px-5 text-slate-500 font-medium">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">
                         {row.am_code}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold text-slate-800 tabular-nums">
+                    <td className="py-3.5 px-5 text-right font-medium text-slate-800 tabular-nums">
                       {formatThousand(row.forecast, true)}
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-indigo-700 tabular-nums">
-                      {formatThousand(row.pesanan, true)}
+                    <td className="py-3.5 px-5 text-right">
+                      {/* Bruto Prominent */}
+                      <div className="font-bold text-slate-900 tabular-nums">
+                        {formatThousand(row.pesanan_bruto, true)}
+                      </div>
+                      {/* Netto Subtext */}
+                      <div className="text-[11px] text-slate-400 font-normal tabular-nums mt-0.5">
+                        Netto: {formatThousand(row.pesanan_netto, true)}
+                      </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-5">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded border ${style.bg} ${style.text} ${style.border}`}>
-                            {row.pct_label}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${style.bg} ${style.text} ${style.border}`}>
+                            {row.pct_bruto_label}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            Netto: {row.pct_netto_label}
                           </span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-300 ${style.progressBarColor}`}
                             style={{ width: `${progressWidth}%` }}
@@ -311,17 +328,22 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold text-amber-700 tabular-nums">
-                      {formatThousand(row.gap, true)}
+                    <td className="py-3.5 px-5 text-right">
+                      <div className="font-bold text-amber-700 tabular-nums">
+                        {formatThousand(row.gap_bruto, true)}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-normal tabular-nums mt-0.5">
+                        Netto: {formatThousand(row.gap_netto, true)}
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3.5 px-4 text-center">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenBoDrawer(row.bo_code);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 group-hover:underline"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 hover:text-indigo-600 group-hover:underline"
                       >
                         <span>Detail BO</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -333,7 +355,7 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
 
               {paginatedData.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                  <td colSpan={8} className="py-10 text-center text-slate-400 text-xs">
                     Tidak ada data Cabang yang sesuai dengan pencarian atau filter yang dipilih.
                   </td>
                 </tr>
@@ -344,26 +366,26 @@ export const BoPerformanceTab: React.FC<BoPerformanceTabProps> = ({
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="p-3.5 bg-slate-50/70 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+          <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <div>
               Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong> ({filteredAndSorted.length} Total Data)
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors shadow-2xs"
                 title="Halaman Sebelumnya"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="px-2 font-medium">
+              <div className="px-2.5 font-medium text-slate-700">
                 {currentPage} / {totalPages}
               </div>
               <button
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 disabled:opacity-30 transition-colors shadow-2xs"
                 title="Halaman Berikutnya"
               >
                 <ChevronRight className="w-4 h-4" />
