@@ -38,11 +38,12 @@ export function setMockModePreference(active: boolean) {
 }
 
 export function getStoredToken(): string | null {
-  return sessionStorage.getItem('q4_token');
+  // Check localStorage first (for Remember Me sessions), then fall back to sessionStorage
+  return localStorage.getItem('q4_token') || sessionStorage.getItem('q4_token');
 }
 
 export function getStoredUser(): User | null {
-  const raw = sessionStorage.getItem('q4_user');
+  const raw = localStorage.getItem('q4_user') || sessionStorage.getItem('q4_user');
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -51,16 +52,44 @@ export function getStoredUser(): User | null {
   }
 }
 
-export function saveAuthSession(token: string, user: User, isMock = false) {
-  sessionStorage.setItem('q4_token', token);
-  sessionStorage.setItem('q4_user', JSON.stringify(user));
+export function isRememberMeActive(): boolean {
+  return localStorage.getItem('q4_remember_me') === 'true';
+}
+
+export function saveAuthSession(token: string, user: User, rememberMe = false, isMock = false) {
+  if (rememberMe) {
+    // Persistent across browser restarts
+    localStorage.setItem('q4_token', token);
+    localStorage.setItem('q4_user', JSON.stringify(user));
+    localStorage.setItem('q4_remember_me', 'true');
+    localStorage.setItem('q4_remembered_username', user.email || '');
+
+    // Clear transient sessionStorage
+    sessionStorage.removeItem('q4_token');
+    sessionStorage.removeItem('q4_user');
+  } else {
+    // Session-only (wiped on tab/browser close)
+    sessionStorage.setItem('q4_token', token);
+    sessionStorage.setItem('q4_user', JSON.stringify(user));
+
+    // Clear persistent token/user
+    localStorage.removeItem('q4_token');
+    localStorage.removeItem('q4_user');
+    localStorage.removeItem('q4_remember_me');
+  }
   setMockModePreference(isMock);
 }
 
 export function clearAuthSession() {
+  // Remove authentication tokens and user payloads from both storages
   sessionStorage.removeItem('q4_token');
   sessionStorage.removeItem('q4_user');
   sessionStorage.removeItem('q4_force_mock');
+
+  localStorage.removeItem('q4_token');
+  localStorage.removeItem('q4_user');
+  localStorage.removeItem('q4_remember_me');
+  // Note: q4_remembered_username is kept so the username is preserved for convenience
 }
 
 // Check real server connectivity
@@ -93,6 +122,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const token = getStoredToken();
 
   const headers = new Headers(options.headers || {});
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -150,14 +182,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // API Service Interface
 export const api = {
   // Real Login against live backend
-  async login(email: string, password: string): Promise<{ token: string; user: User }> {
+  async login(email: string, password: string, rememberMe = false): Promise<{ token: string; user: User }> {
     const response = await request<{
       status: string;
       token: string;
       user: { name: string; role: 'direktur' | 'am'; am_code?: string };
     }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, remember_me: rememberMe }),
     });
 
     const user: User = {
@@ -167,7 +199,7 @@ export const api = {
       am_code: response.user?.am_code,
     };
 
-    saveAuthSession(response.token, user, false);
+    saveAuthSession(response.token, user, rememberMe, false);
     return { token: response.token, user };
   },
 

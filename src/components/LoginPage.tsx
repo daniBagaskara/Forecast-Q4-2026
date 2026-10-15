@@ -8,8 +8,12 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('q4_remembered_username') || '');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    // If username is already remembered or remember_me was true, default to true
+    return localStorage.getItem('q4_remember_me') === 'true' || Boolean(localStorage.getItem('q4_remembered_username'));
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -28,7 +32,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setErrorMessage(null);
 
     try {
-      const result = await api.login(cleanUsername, cleanPassword);
+      const result = await api.login(cleanUsername, cleanPassword, rememberMe);
+      
+      // Manage remembered username preference
+      if (rememberMe) {
+        localStorage.setItem('q4_remembered_username', cleanUsername);
+        localStorage.setItem('q4_remember_me', 'true');
+      } else {
+        localStorage.removeItem('q4_remembered_username');
+        localStorage.removeItem('q4_remember_me');
+      }
+
       onLoginSuccess(result.user);
     } catch (err: unknown) {
       const errObj = err as Error;
@@ -121,6 +135,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Remember Me Option */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  disabled={isLoading}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 cursor-pointer accent-indigo-600 transition-colors"
+                />
+                <span className="text-xs font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                  Ingat saya di perangkat ini
+                </span>
+              </label>
             </div>
 
             <button
